@@ -73,24 +73,32 @@ duration_in_seconds = 0
 for line in mediainfo_output.split('\n'):
     if "Duration" in line:
         duration_str = line.split(":")[1].strip()
-        if 'h' in duration_str and 'min' in duration_str:
-            hours = int(duration_str.split('h')[0].strip())
-            minutes = int(duration_str.split('h')[1].split('min')[0].strip())
-            duration_in_seconds = (hours * 3600) + (minutes * 60)
-        elif 'min' in duration_str and 's' in duration_str:
-            minutes = int(duration_str.split('min')[0].strip())
-            seconds = int(duration_str.split('min')[1].split('s')[0].strip())
-            duration_in_seconds = (minutes * 60) + seconds
-        elif 'min' in duration_str:
-            minutes = int(duration_str.split('min')[0].strip())
-            duration_in_seconds = minutes * 60
-        elif 's' in duration_str:
-            seconds = int(duration_str.split('s')[0].strip())
-            duration_in_seconds = seconds
-
-if duration_in_seconds == 0:
-    print("I couldn't determine the duration of the video.")
-    exit()
+        try:
+            if 'h' in duration_str and 'min' in duration_str:
+                # Format: X h Y min
+                hours = int(duration_str.split('h')[0].strip())
+                minutes = int(duration_str.split('h')[1].split('min')[0].strip())
+                duration_in_seconds = (hours * 3600) + (minutes * 60)
+            elif 'min' in duration_str and 's' in duration_str:
+                # Format: X min Y s
+                minutes = int(duration_str.split('min')[0].strip())
+                seconds = int(duration_str.split('min')[1].split('s')[0].strip())
+                duration_in_seconds = (minutes * 60) + seconds
+            elif 'min' in duration_str:
+                # Format: X min
+                minutes = int(duration_str.split('min')[0].strip())
+                duration_in_seconds = minutes * 60
+            elif 's' in duration_str and not 'ms' in duration_str:
+                # Format: X s
+                seconds = int(duration_str.split('s')[0].strip())
+                duration_in_seconds = seconds
+            elif 'ms' in duration_str:
+                # Format: X ms
+                milliseconds = int(re.search(r'\d+', duration_str).group())
+                duration_in_seconds = milliseconds / 1000
+        except (ValueError, IndexError, AttributeError) as e:
+            print(f"Failed to parse duration: {duration_str} ({e})")
+            exit()
 
 ffmpeg_path = r"ffmpeg"
 screenshot_dir = os.getcwd()
