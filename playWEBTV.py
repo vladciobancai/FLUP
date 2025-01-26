@@ -556,7 +556,7 @@ title = os.path.basename(torrent_file_path).replace('.torrent', '')
 # Prompt user to select the category
 print("Category:\n1. Anime\n2. Desene\n3. Seriale 4K\n4. Seriale HD\n5. Seriale SD\n6. RO Dubbed")
 category_options = {
-    '24': '15', '27': '21', '23': '28'
+    '1': '24', '2': '15', '3': '27', '4': '21', '5': '23', '6': '28'
 }
 category_choice = input("Input category value: ").strip()
 category_value = category_options.get(category_choice, '21')  # Default to 'Seriale HD' if invalid choice
