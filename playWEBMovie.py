@@ -472,9 +472,9 @@ if not torrent_file_path:
 title = os.path.basename(torrent_file_path).replace('.torrent', '')
 
 # Prompt user to select the category
-print("Category:\n1. Anime\n2. Desene\n3. Filme 4K\n4. Filme HD\n5. Filme HD-RO")
+print("Category:\n1. Anime\n2. Desene\n3. Filme 4K\n4. Filme HD\n5. Filme HD-RO\n6. RO Dubbed")
 category_options = {
-    '1': '24', '2': '15', '3': '6', '4': '4', '5': '19'
+    '1': '24', '2': '15', '3': '6', '4': '4', '5': '19', '6': '28'
 }
 category_choice = input("Input category value: ").strip()
 category_value = category_options.get(category_choice, '21')  # Default to 'Seriale HD' if invalid choice
