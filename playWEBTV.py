@@ -4,6 +4,7 @@ import subprocess
 import signal
 import requests
 import re
+import pickle
 from bs4 import BeautifulSoup
 from config import *
 
@@ -503,7 +504,8 @@ takelogin_url = 'https://filelist.io/takelogin.php'
 upload_url = 'https://filelist.io/takeupload.php'
 edit_url = 'https://filelist.io/takeedit.php'
 download_base_url = 'https://filelist.io/download.php?id='
-
+cookies_file = 'filelist_cookies.pkl'
+check_login_url = 'https://filelist.io/'
 
 username = filelist_username
 password = filelist_password
@@ -514,9 +516,25 @@ qbittorrent_username = qbittorrent_username
 qbittorrent_password = qbittorrent_password
 
 
+# Inițializăm sesiunea
 session = requests.Session()
 
+def save_cookies(session, filename):
+    with open(filename, 'wb') as f:
+        pickle.dump(session.cookies, f)
+
+def load_cookies(session, filename):
+    if os.path.exists(filename):
+        with open(filename, 'rb') as f:
+            session.cookies.update(pickle.load(f))
+
+def is_logged_in(session):
+    """ Verifică dacă utilizatorul este deja logat. """
+    response = session.get(check_login_url)
+    return 'logout' in response.text  # Dacă există "logout", înseamnă că e logat
+
 def login(session):
+    """ Execută login-ul și salvează cookies dacă autentificarea reușește. """
     login_page = session.get(login_url)
     soup = BeautifulSoup(login_page.text, 'html.parser')
     validator = soup.find('input', {'name': 'validator'})['value']
@@ -528,17 +546,23 @@ def login(session):
         'unlock': '1'
     }
     login_response = session.post(takelogin_url, data=login_data)
-    return login_response
 
+    if 'logout' in login_response.text or login_response.url != takelogin_url:
+        print('Auth to FileList OK')
+        save_cookies(session, cookies_file)  # Salvăm cookies pentru sesiunea activă
+    else:
+        print('Auth to FileList Failed')
+        print(login_response.text)
+        exit()
 
-login_response = login(session)
+# Încărcăm cookies și verificăm login-ul
+load_cookies(session, cookies_file)
 
-if 'logout' in login_response.text or login_response.url != takelogin_url:
-    print('Auth to FileList OK')
+if not is_logged_in(session):
+    print("Sesiunea inactiva!")
+    login(session)
 else:
-    print('Auth to Filelist Failed')
-    print(login_response.text)
-    exit()
+    print("Sesiunea activă.")
 
 # Locate the torrent file in the current directory
 torrent_file_path = None
