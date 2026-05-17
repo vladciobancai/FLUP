@@ -567,6 +567,10 @@ with open("summary.txt", "r", encoding="utf-8") as file:
 imdb_id_match = re.search(r'tt(\d+)', description)
 imdb_id = imdb_id_match.group(1) if imdb_id_match else ''
 
+# Uploaded by din config.py
+# Daca filelist_uploaded_by = "", FileList va lasa torrentul Anonymous.
+uploaded_by = filelist_uploaded_by.strip()
+
 # Prepare the upload payload and files
 upload_payload = {
     'name': title,
@@ -575,6 +579,7 @@ upload_payload = {
     'descr': description,
     'nfo': summary,
     'imdbid': imdb_id,
+    'epenis': uploaded_by,
     'freeleech': '1' if input("FreeLeech? (Y/N): ").strip().lower() == 'y' else '0'
 }
 
