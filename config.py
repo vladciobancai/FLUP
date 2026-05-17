@@ -11,6 +11,7 @@ pin = 'INSERT-PIN-HERE'
 # FileList.io
 filelist_username = 'INSERT-USERNAME-HERE'
 filelist_password = 'INSERT-PASSWORD-HERE'
+filelist_uploaded_by = "JigSaw"
 
 # qBittorrent app
 qbittorrent_url = 'http://localhost:8089'
@@ -22,3 +23,4 @@ mediainfo_path = r"F:\FLUP-main\mediainfo\mediainfo.exe"
 ffmpeg_path = r"ffmpeg"
 bdinfo_path = r"F:\FLUP-main\bdinfo\BDInfo.exe"
 vlc_path = r"C:\Program Files (x86)\VideoLAN\VLC\vlc.exe"
+mkbrr_path = r"F:\FLUP-main\mkbrr\mkbrr.exe"
