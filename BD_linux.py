@@ -43,12 +43,14 @@ result = subprocess.run(command_list, stdout=subprocess.PIPE, stderr=subprocess.
 
 playlists = []
 for line in result.stdout.splitlines():
-    if ".MPLS" in line:
-        playlist_file = line.split()[2]
-        playlists.append(playlist_file)
+    playlist_match = re.search(r'\b\d{5}\.MPLS\b', line, re.IGNORECASE)
+    if playlist_match:
+        playlists.append(playlist_match.group(0))
 
 if not playlists:
     print("No playlists found.")
+    if result.stderr:
+        print(result.stderr.strip())
     exit()
 
 first_playlist = playlists[0]
