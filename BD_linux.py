@@ -7,7 +7,7 @@ import pickle
 import glob
 from bs4 import BeautifulSoup
 from config_linux import *
-from linux_tools import get_mkbrr_path
+from linux_tools import get_bdinfo_path, get_mkbrr_path
 
 # ===============================
 # Let's Go!
@@ -52,7 +52,7 @@ full_report_path = os.path.join(report_output_dir, "fullreport.txt")
 summary_report_path = os.path.join(report_output_dir, "summary.txt")
 
 # List playlist
-command_list = [bdinfo_path, "-l", input_path]
+command_list = [get_bdinfo_path(bdinfo_path), "-l", input_path]
 result = subprocess.run(command_list, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
 playlists = []
@@ -68,7 +68,7 @@ if not playlists:
 first_playlist = playlists[0]
 
 # Run BDInfo on first playlist
-command_scan = [bdinfo_path, "-m", first_playlist, input_path, report_output_dir]
+command_scan = [get_bdinfo_path(bdinfo_path), "-m", first_playlist, input_path, report_output_dir]
 subprocess.run(command_scan, check=True)
 
 # Looking for the generated report as text file

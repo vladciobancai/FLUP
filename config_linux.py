@@ -24,7 +24,7 @@ ffmpeg_path = "ffmpeg"
 ffprobe_path = "ffprobe"
 
 # BDInfoCLI-ng: https://github.com/Audionut/BDInfoCLI-ng
-# Install the Linux release binary as `bdinfo` somewhere in PATH.
+# Uses PATH first, then downloads a local binary under bin/bdinfo/linux/<arch>/ if missing.
 bdinfo_path = "bdinfo"
 
 # mkbrr: https://github.com/autobrr/mkbrr
