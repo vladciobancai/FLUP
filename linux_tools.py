@@ -43,25 +43,6 @@ def _download_file(url, destination):
             shutil.copyfileobj(response, output_file)
 
 
-def _extract_mkbrr(archive_path, destination):
-    with tarfile.open(archive_path, "r:gz") as archive:
-        for member in archive.getmembers():
-            if os.path.basename(member.name) != "mkbrr" or not member.isfile():
-                continue
-
-            source = archive.extractfile(member)
-            if source is None:
-                continue
-
-            os.makedirs(os.path.dirname(destination), exist_ok=True)
-            with source, open(destination, "wb") as output_file:
-                shutil.copyfileobj(source, output_file)
-            os.chmod(destination, 0o700)
-            return
-
-    raise RuntimeError("Downloaded mkbrr archive did not contain an mkbrr binary")
-
-
 def _extract_binary(archive_path, destination, binary_name):
     with tarfile.open(archive_path, "r:gz") as archive:
         for member in archive.getmembers():
@@ -95,7 +76,7 @@ def _download_mkbrr(destination):
                 archive_path = os.path.join(temp_dir, name)
                 print(f"Downloading mkbrr from {asset['browser_download_url']}")
                 _download_file(asset["browser_download_url"], archive_path)
-                _extract_mkbrr(archive_path, destination)
+                _extract_binary(archive_path, destination, "mkbrr")
             return destination
 
     raise RuntimeError(f"No mkbrr Linux release asset found for {release_arch}")

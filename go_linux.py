@@ -17,32 +17,16 @@ def delete_files():
     extensions_to_delete = ['.txt', '.torrent', '.png']
     directory = os.getcwd()
 
-    def delete_file(file_path):
-        try:
-            os.remove(file_path)
-        except Exception as e:
-            pass
-
     for filename in os.listdir(directory):
         if any(filename.endswith(ext) for ext in extensions_to_delete):
             file_path = os.path.join(directory, filename)
-            delete_file(file_path)
+            try:
+                os.remove(file_path)
+            except OSError:
+                pass
 
 
 delete_files()
-
-
-# Kill FFmpeg process
-def kill_ffmpeg_processes():
-    subprocess.run(
-        ['pkill', '-TERM', '-x', 'ffmpeg'],
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-        check=False
-    )
-
-
-kill_ffmpeg_processes()
 
 
 # Input direct path to file (.mkv) or folder to be uploaded

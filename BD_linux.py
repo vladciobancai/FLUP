@@ -4,7 +4,6 @@ import subprocess
 import requests
 import re
 import pickle
-import glob
 from bs4 import BeautifulSoup
 from config_linux import *
 from linux_tools import get_bdinfo_path, get_mkbrr_path
@@ -18,27 +17,14 @@ def delete_files():
     extensions_to_delete = ['.txt', '.torrent', '.png']
     directory = os.getcwd()
 
-    def delete_file(file_path):
-        try:
-            os.remove(file_path)
-        except Exception as e:
-            pass
-
     for filename in os.listdir(directory):
         if any(filename.endswith(ext) for ext in extensions_to_delete):
             file_path = os.path.join(directory, filename)
-            delete_file(file_path)
+            try:
+                os.remove(file_path)
+            except OSError:
+                pass
 delete_files()
-
-# Kill FFmpeg process
-def kill_ffmpeg_processes():
-    subprocess.run(
-        ['pkill', '-TERM', '-x', 'ffmpeg'],
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-        check=False
-    )
-kill_ffmpeg_processes()
 
 # Input direct path to Blu-ray folder to be uploaded
 input_path = input("Input folder path to Blu-ray: ")
@@ -338,13 +324,6 @@ def create_description_txt(summary_file, bbcode_images):
     # Write the final description to a file
     with open("description.txt", "w", encoding="utf-8") as file:
         file.write("[center]" + description + "[/center]")
-
-# Read the BBCode images
-with open("images.txt", "r") as file:
-    bbcode_images = file.read().strip()
-
-# Create the description
-create_description_txt(summary_report_path, bbcode_images)
 
 with open("images.txt", "r") as file:
     bbcode_images = file.read().strip()
