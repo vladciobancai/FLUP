@@ -24,7 +24,7 @@
    ```sh
    setx /m PATH "C:\ffmpeg\bin;%PATH%"
 
-3. **Install Windows MSI torrenttools from** [HERE](https://github.com/fbdtemme/torrenttools/releases)
+3. **Download and extract mkbrr to FLUP-main\mkbrr folder  (mkbrr_1.23.0_windows_x86_64.zip ) ** [HERE](https://github.com/autobrr/mkbrr/releases)
 
 4. **Install** [VLC](https://www.videolan.org/vlc/download-windows.html)
 
