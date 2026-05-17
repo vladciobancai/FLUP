@@ -7,6 +7,7 @@ import pickle
 import glob
 from bs4 import BeautifulSoup
 from config_linux import *
+from linux_tools import get_mkbrr_path
 
 # ===============================
 # Let's Go!
@@ -433,31 +434,38 @@ def get_total_size(path):
             total_size += os.path.getsize(fp)
     return total_size
 
-def select_piece_size(total_size):
+def select_piece_length_exponent(total_size):
     size_gib = total_size / (1024 ** 3)  # Convertim în GiB
     if size_gib < 4:
-        return "2 MiB"
+        return "21"
     elif size_gib < 8:
-        return "4 MiB"
+        return "22"
     elif size_gib < 16:
-        return "8 MiB"
+        return "23"
     else:
-        return "16 MiB"
+        return "24"
 
 def create_torrent(input_path):
     total_size = get_total_size(input_path)
-    piece_size = select_piece_size(total_size)
+    piece_length = select_piece_length_exponent(total_size)
 
     if os.path.isfile(input_path) or os.path.isdir(input_path):
         output_file = os.path.join(os.getcwd(),
                                    os.path.basename(input_path.rstrip('/\\')).replace('.mkv', '') + ".torrent")
         command = [
-            'torrenttools', 'create', input_path,
-            '--piece-size', piece_size,
-            '--output', output_file
+            get_mkbrr_path(mkbrr_path),
+            'create',
+            input_path,
+            '--piece-length', piece_length,
+            '--output', output_file,
+            '--skip-prefix'
         ]
 
-        subprocess.run(command)
+        result = subprocess.run(command, text=True)
+
+        if result.returncode != 0:
+            print("Failed to create .torrent with mkbrr.")
+            exit()
 
         print(f"Succesfully .torrent file created -> {output_file}")
 

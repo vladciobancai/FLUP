@@ -6,6 +6,7 @@ import pickle
 import re
 from bs4 import BeautifulSoup
 from config_linux import *
+from linux_tools import get_mkbrr_path
 
 # ===============================
 # Let's Go!
@@ -269,8 +270,9 @@ def create_torrent(input_path):
         os.path.basename(input_path.rstrip('/\\')).replace('.mkv', '') + ".torrent"
     )
 
+    # mkbrr: https://github.com/autobrr/mkbrr
     command = [
-        mkbrr_path,
+        get_mkbrr_path(mkbrr_path),
         "create",
         input_path,
         "--piece-length", piece_length,

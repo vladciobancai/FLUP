@@ -27,4 +27,5 @@ ffprobe_path = "ffprobe"
 # Install the Linux release binary as `bdinfo` somewhere in PATH.
 bdinfo_path = "bdinfo"
 
+# mkbrr: https://github.com/autobrr/mkbrr
 mkbrr_path = "mkbrr"
