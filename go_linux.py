@@ -517,7 +517,9 @@ if torrent_id_match:
                 'dlLimit': '0',
                 'upLimit': '0',
                 'sequentialDownload': 'false',
-                'firstLastPiecePrio': 'false'
+                'firstLastPiecePrio': 'false',
+                'skip_checking': 'true',
+                'tags': 'FL'
             }
 
             login_data = {
