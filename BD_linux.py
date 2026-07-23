@@ -1,5 +1,4 @@
 import os
-import random
 import subprocess
 import requests
 import re
@@ -280,18 +279,33 @@ except ValueError as e:
     print(e)
     exit()
 
-# Calculate skip time as 10% of the total duration
-skip_time = int(duration_in_seconds * 0.10)
+def get_video_line(summary_file_path):
+    with open(summary_file_path, 'r', encoding='utf-8', errors='replace') as summary_file:
+        for line in summary_file:
+            if line.startswith("Video:"):
+                return line.strip()
+    return ""
 
-# Calculate valid duration range
-valid_duration_in_seconds = duration_in_seconds - 2 * skip_time
+def get_skip_frame_mode(video_line):
+    upper_video_line = video_line.upper()
+    if "VC-1" in upper_video_line or "DOLBY VISION" in upper_video_line or " HDR" in upper_video_line:
+        return 'nokey'
+    return 'none'
 
-if valid_duration_in_seconds <= 0:
-    raise ValueError("Video is too short to skip the first and last 10%.")
+def build_screenshot_times(duration_in_seconds, screenshot_count=4):
+    capture_count = screenshot_count + 1
+    start_time = duration_in_seconds * 0.05
+    end_time = duration_in_seconds * 0.90
 
-# Generate random screenshot times
-screenshot_times = sorted(random.sample(range(0, valid_duration_in_seconds), 3))
-screenshot_times = [time + skip_time for time in screenshot_times]
+    if end_time <= start_time:
+        raise ValueError("Video is too short to generate screenshots.")
+
+    interval = (end_time - start_time) / capture_count
+    return [start_time + (index * interval) for index in range(capture_count)]
+
+screenshot_times = build_screenshot_times(duration_in_seconds)
+video_line = get_video_line(summary_report_path)
+skip_frame_mode = get_skip_frame_mode(video_line)
 
 # Get video resolution using ffprobe
 def get_video_resolution(video_file):
@@ -321,16 +335,17 @@ def get_video_resolution(video_file):
         raise ValueError("Could not get video resolution.")
 
 # FFmpeg screenshot function
-def generate_screenshots_with_ffmpeg(video_file, screenshot_times, report_output_dir):
+def generate_screenshots_with_ffmpeg(video_file, screenshot_times, report_output_dir, skip_frame_mode):
     screenshot_filenames = []
     for idx, time in enumerate(screenshot_times):
         screenshot_filename = os.path.join(report_output_dir, f"screenshot_{idx + 1}.png")
         ffmpeg_command = [
             ffmpeg_path,
             '-ss', str(time),
+            '-skip_frame', skip_frame_mode,
             '-i', video_file,
             '-frames:v', '1',
-            '-q:v', '2',
+            '-pix_fmt', 'rgb24',
             '-an',
             '-sn',
             '-y',
@@ -341,6 +356,11 @@ def generate_screenshots_with_ffmpeg(video_file, screenshot_times, report_output
             screenshot_filenames.append(screenshot_filename)
         else:
             print(f"Failed to save screenshot: {screenshot_filename}")
+    if len(screenshot_filenames) > 4:
+        smallest_screenshot = min(screenshot_filenames, key=os.path.getsize)
+        os.remove(smallest_screenshot)
+        screenshot_filenames.remove(smallest_screenshot)
+
     return screenshot_filenames
 
 # Main function to generate screenshots with FFmpeg
@@ -352,7 +372,12 @@ def generate_screenshots(video_file, report_output_dir):
 
         if width >= 1920 and height >= 1080:
             print("Using FFmpeg for screenshots...")
-            screenshot_filenames = generate_screenshots_with_ffmpeg(video_file, screenshot_times, report_output_dir)
+            screenshot_filenames = generate_screenshots_with_ffmpeg(
+                video_file,
+                screenshot_times,
+                report_output_dir,
+                skip_frame_mode,
+            )
         else:
             raise ValueError("Unsupported resolution for screenshots.")
     except Exception as e:
