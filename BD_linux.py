@@ -160,7 +160,7 @@ def parse_m2ts_entries(report_path):
 
     return m2ts_entries
 
-def select_screenshot_file(m2ts_entries, stream_dir):
+def select_screenshot_file(m2ts_entries, bdmv_dir):
     if not m2ts_entries:
         raise ValueError("No valid M2TS entries found in the BDInfo report.")
 
@@ -182,8 +182,16 @@ def select_screenshot_file(m2ts_entries, stream_dir):
                 break
         print("Invalid selection.")
 
-    selected_file_path = os.path.join(stream_dir, selected_entry['file_name'])
-    if not os.path.isfile(selected_file_path):
+    selected_file_path = None
+    for root, _, files in os.walk(bdmv_dir):
+        for file_name in files:
+            if file_name.lower() == selected_entry['file_name'].lower():
+                selected_file_path = os.path.join(root, file_name)
+                break
+        if selected_file_path:
+            break
+
+    if not selected_file_path:
         raise ValueError(f"Selected M2TS file not found: {selected_entry['file_name']}")
 
     print(
@@ -255,14 +263,15 @@ else:
     print("Section 'QUICK SUMMARY:' not found in fullsummary.txt.")
     exit()
 
-stream_dir = os.path.join(input_path, "BDMV", "STREAM")
+bdmv_dir = os.path.join(input_path, "BDMV")
+stream_dir = os.path.join(bdmv_dir, "STREAM")
 if not os.path.isdir(stream_dir):
     print(r"Not any .m2ts file in BDMV\STREAM.")
     exit()
 
 try:
     m2ts_entries = parse_m2ts_entries(full_report_path)
-    screenshot_source_file, duration_in_seconds = select_screenshot_file(m2ts_entries, stream_dir)
+    screenshot_source_file, duration_in_seconds = select_screenshot_file(m2ts_entries, bdmv_dir)
     print(f"Selected video file duration is {duration_in_seconds} seconds.")
 except ValueError as e:
     print(e)
