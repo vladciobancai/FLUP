@@ -166,21 +166,24 @@ def select_screenshot_file(m2ts_entries, bdmv_dir):
 
     sorted_entries = sorted(m2ts_entries, key=lambda entry: (-entry['duration_seconds'], entry['file_name']))
 
-    print("M2TS files found in the selected playlist:")
-    for index, entry in enumerate(sorted_entries, start=1):
-        print(f"{index}. {entry['file_name']} - {entry['duration_text']}")
+    if len(sorted_entries) == 1:
+        selected_entry = sorted_entries[0]
+    else:
+        print("M2TS files found in the selected playlist:")
+        for index, entry in enumerate(sorted_entries, start=1):
+            print(f"{index}. {entry['file_name']} - {entry['duration_text']}")
 
-    while True:
-        selection = input("Select M2TS file for screenshots [1]: ").strip()
-        if not selection:
-            selected_entry = sorted_entries[0]
-            break
-        if selection.isdigit():
-            selected_index = int(selection)
-            if 1 <= selected_index <= len(sorted_entries):
-                selected_entry = sorted_entries[selected_index - 1]
+        while True:
+            selection = input("Select M2TS file for screenshots [1]: ").strip()
+            if not selection:
+                selected_entry = sorted_entries[0]
                 break
-        print("Invalid selection.")
+            if selection.isdigit():
+                selected_index = int(selection)
+                if 1 <= selected_index <= len(sorted_entries):
+                    selected_entry = sorted_entries[selected_index - 1]
+                    break
+            print("Invalid selection.")
 
     selected_file_path = None
     for root, _, files in os.walk(bdmv_dir):
