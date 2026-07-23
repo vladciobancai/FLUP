@@ -103,27 +103,48 @@ def select_playlist(playlists):
         print("Invalid selection.")
 
 def parse_m2ts_entries(report_path):
-    with open(report_path, 'r', encoding='utf-8') as report_file:
-        lines = report_file.readlines()
+    with open(report_path, 'r', encoding='utf-8', errors='replace') as report_file:
+        report_text = report_file.read()
+
+    files_section = report_text
+    if "FILES:" in report_text and "CHAPTERS:" in report_text:
+        files_section = report_text.split("FILES:", 1)[1].split("CHAPTERS:", 1)[0]
 
     m2ts_entries = []
     seen_files = set()
 
-    for line in lines:
-        if ".M2TS" not in line.upper():
+    for raw_line in files_section.splitlines():
+        line = raw_line.strip()
+        if not line or ".M2TS" not in line.upper():
             continue
 
-        file_match = re.search(r'\b(\d{5}\.M2TS)\b', line, re.IGNORECASE)
-        duration_match = re.search(r'(\d{2}:\d{2}:\d{2}(?:\.\d+)?)', line)
+        parts = line.split()
+        file_name = None
+        duration_text = None
 
-        if not file_match or not duration_match:
-            continue
+        if len(parts) >= 3:
+            candidate_file_name = parts[0]
+            if len(parts) >= 4 and parts[1].startswith("(") and parts[1].endswith(")"):
+                candidate_file_name = f"{parts[0]} {parts[1]}"
+                duration_candidate = parts[2]
+            else:
+                duration_candidate = parts[2]
 
-        file_name = file_match.group(1).upper()
+            file_match = re.search(r'(\d{5}\.M2TS)', candidate_file_name, re.IGNORECASE)
+            if file_match:
+                file_name = file_match.group(1).upper()
+                duration_text = duration_candidate
+
+        if not file_name or not duration_text:
+            file_match = re.search(r'\b(\d{5}\.M2TS)\b', line, re.IGNORECASE)
+            duration_match = re.search(r'(\d{1,2}:\d{2}:\d{2}(?:\.\d+)?)', line)
+            if not file_match or not duration_match:
+                continue
+            file_name = file_match.group(1).upper()
+            duration_text = duration_match.group(1)
+
         if file_name in seen_files:
             continue
-
-        duration_text = duration_match.group(1)
 
         try:
             duration_seconds = duration_to_seconds(duration_text)
