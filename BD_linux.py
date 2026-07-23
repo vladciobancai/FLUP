@@ -32,6 +32,144 @@ if not os.path.isdir(input_path):
     print("Invalid path.")
     exit()
 
+def duration_to_seconds(duration_str):
+    match = re.match(r'^(\d+):(\d{2}):(\d{2})(?:\.(\d+))?$', duration_str.strip())
+    if not match:
+        raise ValueError(f"Invalid duration format: {duration_str}")
+
+    hours, minutes, seconds, _fraction = match.groups()
+    return int(hours) * 3600 + int(minutes) * 60 + int(seconds)
+
+def format_seconds(total_seconds):
+    hours = total_seconds // 3600
+    minutes = (total_seconds % 3600) // 60
+    seconds = total_seconds % 60
+    return f"{hours:02}:{minutes:02}:{seconds:02}"
+
+def parse_playlist_candidates(bdinfo_output):
+    candidates = []
+
+    for line in bdinfo_output.splitlines():
+        playlist_match = re.search(r'\b(\d{5}\.MPLS)\b', line, re.IGNORECASE)
+        if not playlist_match:
+            continue
+
+        duration_match = re.search(r'(\d{2}:\d{2}:\d{2}(?:\.\d+)?)', line)
+        duration_text = duration_match.group(1) if duration_match else None
+        duration_seconds = None
+
+        if duration_text:
+            try:
+                duration_seconds = duration_to_seconds(duration_text)
+            except ValueError:
+                duration_text = None
+
+        candidates.append({
+            'playlist': playlist_match.group(1),
+            'duration_text': duration_text,
+            'duration_seconds': duration_seconds,
+        })
+
+    unique_candidates = []
+    seen_playlists = set()
+    for candidate in candidates:
+        if candidate['playlist'] in seen_playlists:
+            continue
+        seen_playlists.add(candidate['playlist'])
+        unique_candidates.append(candidate)
+
+    return unique_candidates
+
+def select_playlist(playlists):
+    if len(playlists) == 1:
+        selected_playlist = playlists[0]
+        duration_display = selected_playlist['duration_text'] or 'unknown duration'
+        print(f"Only one playlist found. Automatically selecting {selected_playlist['playlist']} ({duration_display}).")
+        return selected_playlist
+
+    print("Available playlists:")
+    for index, playlist in enumerate(playlists, start=1):
+        duration_display = playlist['duration_text'] or 'unknown duration'
+        print(f"{index}. {playlist['playlist']} - {duration_display}")
+
+    while True:
+        selection = input("Select playlist to scan [1]: ").strip()
+        if not selection:
+            return playlists[0]
+        if selection.isdigit():
+            selected_index = int(selection)
+            if 1 <= selected_index <= len(playlists):
+                return playlists[selected_index - 1]
+        print("Invalid selection.")
+
+def parse_m2ts_entries(report_path):
+    with open(report_path, 'r', encoding='utf-8') as report_file:
+        lines = report_file.readlines()
+
+    m2ts_entries = []
+    seen_files = set()
+
+    for line in lines:
+        if ".M2TS" not in line.upper():
+            continue
+
+        file_match = re.search(r'\b(\d{5}\.M2TS)\b', line, re.IGNORECASE)
+        duration_match = re.search(r'(\d{2}:\d{2}:\d{2}(?:\.\d+)?)', line)
+
+        if not file_match or not duration_match:
+            continue
+
+        file_name = file_match.group(1).upper()
+        if file_name in seen_files:
+            continue
+
+        duration_text = duration_match.group(1)
+
+        try:
+            duration_seconds = duration_to_seconds(duration_text)
+        except ValueError:
+            continue
+
+        seen_files.add(file_name)
+        m2ts_entries.append({
+            'file_name': file_name,
+            'duration_text': duration_text,
+            'duration_seconds': duration_seconds,
+        })
+
+    return m2ts_entries
+
+def select_screenshot_file(m2ts_entries, stream_dir):
+    if not m2ts_entries:
+        raise ValueError("No valid M2TS entries found in the BDInfo report.")
+
+    sorted_entries = sorted(m2ts_entries, key=lambda entry: (-entry['duration_seconds'], entry['file_name']))
+
+    print("M2TS files found in the selected playlist:")
+    for index, entry in enumerate(sorted_entries, start=1):
+        print(f"{index}. {entry['file_name']} - {entry['duration_text']}")
+
+    while True:
+        selection = input("Select M2TS file for screenshots [1]: ").strip()
+        if not selection:
+            selected_entry = sorted_entries[0]
+            break
+        if selection.isdigit():
+            selected_index = int(selection)
+            if 1 <= selected_index <= len(sorted_entries):
+                selected_entry = sorted_entries[selected_index - 1]
+                break
+        print("Invalid selection.")
+
+    selected_file_path = os.path.join(stream_dir, selected_entry['file_name'])
+    if not os.path.isfile(selected_file_path):
+        raise ValueError(f"Selected M2TS file not found: {selected_entry['file_name']}")
+
+    print(
+        f"Using {selected_entry['file_name']} ({selected_entry['duration_text']}) for screenshots."
+    )
+    return selected_file_path, selected_entry['duration_seconds']
+
 # Run BDInfoCLI to find the main playlist and generate report
 report_output_dir = os.getcwd()
 full_report_path = os.path.join(report_output_dir, "fullreport.txt")
@@ -41,11 +179,7 @@ summary_report_path = os.path.join(report_output_dir, "summary.txt")
 command_list = [get_bdinfo_path(bdinfo_path), "-l", input_path]
 result = subprocess.run(command_list, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
-playlists = []
-for line in result.stdout.splitlines():
-    playlist_match = re.search(r'\b\d{5}\.MPLS\b', line, re.IGNORECASE)
-    if playlist_match:
-        playlists.append(playlist_match.group(0))
+playlists = parse_playlist_candidates(result.stdout)
 
 if not playlists:
     print("No playlists found.")
@@ -53,10 +187,13 @@ if not playlists:
         print(result.stderr.strip())
     exit()
 
-first_playlist = playlists[0]
+selected_playlist = select_playlist(playlists)
+selected_playlist_name = selected_playlist['playlist']
+selected_playlist_duration = selected_playlist['duration_text'] or 'unknown duration'
+print(f"Scanning playlist {selected_playlist_name} ({selected_playlist_duration})")
 
-# Run BDInfo on first playlist
-command_scan = [get_bdinfo_path(bdinfo_path), "-m", first_playlist, input_path, report_output_dir]
+# Run BDInfo on selected playlist
+command_scan = [get_bdinfo_path(bdinfo_path), "-m", selected_playlist_name, input_path, report_output_dir]
 subprocess.run(command_scan, check=True)
 
 # Looking for the generated report as text file
@@ -97,57 +234,15 @@ else:
     print("Section 'QUICK SUMMARY:' not found in fullsummary.txt.")
     exit()
 
-# Find the largest .m2ts file from BDMV\STREAM
 stream_dir = os.path.join(input_path, "BDMV", "STREAM")
-largest_m2ts_file = None
-largest_size = 0
-
-for file in os.listdir(stream_dir):
-    if file.endswith(".m2ts"):
-        file_path = os.path.join(stream_dir, file)
-        file_size = os.path.getsize(file_path)
-        if file_size > largest_size:
-            largest_size = file_size
-            largest_m2ts_file = file_path
-
-if not largest_m2ts_file:
+if not os.path.isdir(stream_dir):
     print(r"Not any .m2ts file in BDMV\STREAM.")
     exit()
 
-# Function to extract maximum duration from M2TS files in BDInfo report
-def get_max_duration_from_m2ts(report_path):
-    with open(report_path, 'r', encoding='utf-8') as report_file:
-        lines = report_file.readlines()
-
-    max_duration = 0
-
-    for line in lines:
-        if line.strip().startswith("0") and ".M2TS" in line:
-            columns = re.split(r'\s{2,}', line.strip())
-
-            if len(columns) >= 3:
-                duration_str = columns[2]
-
-                try:
-                    hours, minutes, seconds_ms = duration_str.split(':')
-                    seconds, ms = seconds_ms.split('.')
-
-                    duration_in_seconds = int(hours) * 3600 + int(minutes) * 60 + int(seconds)
-
-                    if duration_in_seconds > max_duration:
-                        max_duration = duration_in_seconds
-                except:
-                    continue
-
-    if max_duration == 0:
-        raise ValueError("No valid duration found for M2TS files.")
-
-    return max_duration
-
-# Extract the maximum duration
 try:
-    duration_in_seconds = get_max_duration_from_m2ts(full_report_path)
-    print(f"Maximum video file duration is {duration_in_seconds} seconds.")
+    m2ts_entries = parse_m2ts_entries(full_report_path)
+    screenshot_source_file, duration_in_seconds = select_screenshot_file(m2ts_entries, stream_dir)
+    print(f"Selected video file duration is {duration_in_seconds} seconds.")
 except ValueError as e:
     print(e)
     exit()
@@ -233,7 +328,7 @@ def generate_screenshots(video_file, report_output_dir):
     return screenshot_filenames
 
 # Generate screenshots
-screenshot_filenames = generate_screenshots(largest_m2ts_file, report_output_dir)
+screenshot_filenames = generate_screenshots(screenshot_source_file, report_output_dir)
 
 if screenshot_filenames:
     print("Screenshots generated successfully:")
